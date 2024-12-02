@@ -1,6 +1,6 @@
 import os
 import sys
-from sqlalchemy import Column, ForeignKey, Integer, String, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy import create_engine
 from eralchemy2 import render_er
@@ -8,34 +8,54 @@ from datetime import datetime, timezone
 
 Base = declarative_base()
 
-class Student(Base):
-    __tablename__ = 'student'
-    # Here we define columns for the table 'estudiantes'
-    # Each column is also a normal Python instance attribute.
+
+class User(Base):
+    __tablename__ = 'user'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(100), nullable=False)
-    last_name = Column(String(100), nullable=False)
-    email = Column(String(50), nullable=False, unique=True)
-    created = Column(Date, default=lambda: datetime.now(timezone.utc).date())
+    username = Column(String(100), nullable=False, unique=True)
+    firstname = Column(String(100), nullable=False)
+    lastname = Column(String(100), nullable=False)
+    email = Column(String(100), nullable=False, unique=True)
+    created_at = Column(Integer, default=datetime.now(timezone.utc).timestamp)
+    comments = relationship("Comment", foreign_keys="Comment.user_id")
+    posts = relationship("Post", foreign_keys="Post.user_id")
 
-class Address(Base):
-    __tablename__ = 'address'
-    # Here we define columns for the table address.
-    # Notice that each column is also a normal Python instance attribute.
-    id = Column(Integer, primary_key=True)
-    street_name = Column(String(250))
-    street_number = Column(String(250))
-    post_code = Column(String(250), nullable=False)
-    student_id = Column(Integer, ForeignKey('student.id'))
-    person = relationship(Student)
 
-    def to_dict(self):
-        return {}
+class Follower(Base):
+    __tablename__ = 'followers'
+    user_from_id = Column(Integer, ForeignKey('user.id'), primary_key=True)
+    user_to_id = Column(Integer, ForeignKey('user.id'), primary_key=True)
+    user_from = relationship("User", foreign_keys=[user_from_id])
+    user_to = relationship("User", foreign_keys=[user_to_id])
 
-## Draw from SQLAlchemy base
+
+class Post(Base):
+    __tablename__ = 'post'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('user.id'))
+    comments = relationship("Comment", foreign_keys="Comment.post_id")
+    media = relationship("Media", foreign_keys="Media.post_id")
+
+
+class Comment(Base):
+    __tablename__ = 'comment'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    comment_text = Column(String(255), nullable=False)
+    user_id = Column(Integer, ForeignKey('user.id'))
+    post_id = Column(Integer, ForeignKey('post.id'))
+
+
+class Media(Base):
+    __tablename__ = 'media'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    type = Column(Enum('image', 'video', name='media_type'), nullable=False)
+    url = Column(String(255), nullable=False)
+    post_id = Column(Integer, ForeignKey('post.id'))
+
+
 try:
     result = render_er(Base, 'diagram.png')
     print("Success! Check the diagram.png file")
 except Exception as e:
-    print("There was a problem genering the diagram")
+    print("There was a problem generating the diagram")
     raise e
